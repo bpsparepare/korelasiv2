@@ -1,0 +1,36 @@
+name: korelasi
+description: "A new Flutter project."
+
+publish_to: "none"
+
+version: 2.0.1+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.4.0 # Tambahkan baris ini
+  shared_preferences: ^2.5.3 # Tambahkan untuk menyimpan status login
+  provider: ^6.1.3 # Tambahkan untuk state management
+  mobile_scanner: ^7.0.1
+  cached_network_image: ^3.3.1 # Tambahkan baris ini (gunakan versi terbaru yang kompatibel)
+  intl: ^0.20.2
+  uuid: ^4.3.3
+  image_picker: ^1.0.7
+
+
+  cupertino_icons: ^1.0.8
+  supabase_flutter: ^2.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/ # Pastikan baris ini ada dan indentasinya benar

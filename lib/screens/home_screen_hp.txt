@@ -1,0 +1,390 @@
+// lib/screens/home_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:korelasi/screens/scan_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
+// DIUBAH: Diberi alias agar tidak konflik
+import '../models/user.dart' as app_user;
+import '../models/product.dart';
+import '../providers/cart_provider.dart';
+import 'history_screen.dart';
+import 'keranjang_screen.dart';
+import 'login_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  // DIKEMBALIKAN: Menerima objek User dari model Anda
+  final app_user.User user;
+  const HomeScreen({super.key, required this.user});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  final supabase = Supabase.instance.client;
+
+  Map<String, List<Product>> _groupedProducts = {};
+  List<String> _categoryOrder = [];
+  List<String> _filterCategories = ['Semua'];
+  String _selectedCategory = 'Semua';
+
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final response = await supabase
+          .from('korelasi_master_produk')
+          .select()
+          .gt('stok', 0);
+
+      debugPrint('DATA MENTAH DARI SUPABASE: $response');
+
+      final List<Product> products = (response as List)
+          .map((data) => Product.fromJson(data))
+          .toList();
+
+      final Map<String, List<Product>> grouped = {};
+      final List<String> categoryOrder = [];
+      final Set<String> uniqueCategories = {};
+
+      for (var product in products) {
+        uniqueCategories.add(product.kategori);
+        if (!grouped.containsKey(product.kategori)) {
+          grouped[product.kategori] = [];
+          categoryOrder.add(product.kategori);
+        }
+        grouped[product.kategori]!.add(product);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _groupedProducts = grouped;
+        _categoryOrder = categoryOrder;
+        _filterCategories = ['Semua', ...uniqueCategories];
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('ERROR FETCH SUPABASE: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Gagal memuat data: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // DIKEMBALIKAN: Logout dengan menghapus SharedPreferences
+  Future<void> _logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Hapus semua data sesi
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  void _onItemTapped(int index) {
+     if (index == 2) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const KeranjangScreen()));
+    } else if (index == 1) {
+       Navigator.push(context, MaterialPageRoute(builder: (context) => const HistoryScreen()));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color primaryColor = const Color.fromARGB(255, 255, 158, 68);
+    final cart = Provider.of<CartProvider>(context);
+
+    final Map<String, List<Product>> productsToDisplay = {};
+    if (_searchQuery.isEmpty) {
+      if (_selectedCategory == 'Semua') {
+        productsToDisplay.addAll(_groupedProducts);
+      } else {
+        if (_groupedProducts.containsKey(_selectedCategory)) {
+          productsToDisplay[_selectedCategory] = _groupedProducts[_selectedCategory]!;
+        }
+      }
+    } else {
+       _groupedProducts.forEach((category, products) {
+        final filteredProducts = products.where((p) => p.nama.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+        if(filteredProducts.isNotEmpty) {
+          productsToDisplay[category] = filteredProducts;
+        }
+      });
+    }
+
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        elevation: 0,
+        // DIKEMBALIKAN: Menggunakan namaLengkap dari widget
+        title: Text('Hi, ${widget.user.namaLengkap}!'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ScanScreen()));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _logout(context),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+              ? Center(child: Text(_errorMessage))
+              : RefreshIndicator(
+                  onRefresh: _fetchData,
+                  child: ListView(
+                    children: [
+                      _buildSearchAndFilter(primaryColor),
+                      if (productsToDisplay.isEmpty && !_isLoading)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(48.0),
+                            child: Text('Produk tidak ditemukan.'),
+                          ),
+                        ),
+                      ..._categoryOrder.where((cat) => productsToDisplay.containsKey(cat)).map((category) {
+                        return _buildCategorySection(
+                            context, category, productsToDisplay[category]!);
+                      }).toList(),
+                    ],
+                  ),
+                ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: primaryColor,
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'History',
+          ),
+          BottomNavigationBarItem(
+            icon: Badge(
+              label: Text('${cart.totalItemsInCart}'),
+              isLabelVisible: cart.totalItemsInCart > 0,
+              child: const Icon(Icons.shopping_cart),
+            ),
+            label: 'Keranjang',
+          ),
+        ],
+      ),
+    );
+  }
+
+   Widget _buildSearchAndFilter(Color primaryColor) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Cari produk...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(25.0),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.grey[200],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _filterCategories.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = _filterCategories[index];
+                final isSelected = category == _selectedCategory;
+                return ChoiceChip(
+                  label: Text(category),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedCategory = category;
+                      _searchController.clear();
+                    });
+                  },
+                  selectedColor: primaryColor.withOpacity(0.8),
+                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+                  backgroundColor: Colors.grey[200],
+                  shape: StadiumBorder(side: BorderSide(color: isSelected ? primaryColor : Colors.grey[300]!)),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection(
+    BuildContext context,
+    String categoryTitle,
+    List<Product> products,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                categoryTitle,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              TextButton(
+                onPressed: () {
+                   setState(() {
+                      _selectedCategory = categoryTitle;
+                    });
+                },
+                child: const Text('Lihat semua'),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          height: 280,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return Container(
+                width: 150,
+                margin: const EdgeInsets.only(right: 12.0),
+                child: _buildProductCard(product),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductCard(Product product) {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 4,
+            child: CachedNetworkImage(
+              imageUrl: product.gambarUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(color: Colors.grey[200]),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.nama,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Stok: ${product.stok} ${product.satuan}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                   Text(
+                    'Rp ${product.harga.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        cart.addItem(product);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${product.nama} ditambahkan ke keranjang'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      child: const Text('Tambah'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

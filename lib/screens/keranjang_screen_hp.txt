@@ -1,0 +1,332 @@
+// lib/screens/keranjang_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import '../providers/cart_provider.dart';
+import '../models/cart_item.dart';
+import '../services/api_service.dart'; // Import ApiService
+import 'dart:developer' as developer; // Import untuk logging
+
+class KeranjangScreen extends StatelessWidget {
+  const KeranjangScreen({super.key});
+
+  // Fungsi untuk melakukan checkout
+  Future<void> _handleCheckout(BuildContext context) async {
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final apiService = ApiService();
+
+    if (cart.items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Keranjang Anda kosong. Tambahkan item untuk Checkout.',
+          ),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    // Ambil data pelanggan dari SharedPreferences
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? customerId = prefs.getString('userId');
+    final String? customerName = prefs.getString('namaLengkap');
+
+    if (customerId == null || customerName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Informasi pelanggan tidak ditemukan. Silakan login kembali.',
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      // Mungkin arahkan pengguna kembali ke login screen
+      Navigator.popUntil(
+        context,
+        (route) => route.isFirst,
+      ); // Kembali ke root, biasanya login
+      return;
+    }
+
+    try {
+      final response = await apiService.placeOrder(
+        customerId: customerId,
+        customerName: customerName,
+        orderItems: cart.items,
+      );
+
+      if (response['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pesanan berhasil ditempatkan! ID Pesanan: ${response['orderId']}',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        cart.clearCart(); // Kosongkan keranjang setelah pesanan berhasil
+        Navigator.pop(
+          context,
+          true,
+        ); // Kembali ke Home Screen, kirim sinyal refresh
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Data berhasil disimpan'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        cart.clearCart(); // Kosongkan keranjang setelah pesanan berhasil
+        Navigator.pop(
+          context,
+          true,
+        ); // Kembali ke Home Screen, kirim sinyal refresh
+        //developer.log('Order placement failed: ${response['message']}');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan saat memproses pesanan: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      developer.log('Error during order placement: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color primaryColor = Color.fromARGB(255, 255, 158, 68);
+
+    // Menggunakan Consumer untuk mendengarkan perubahan pada CartProvider
+    return Consumer<CartProvider>(
+      builder: (context, cart, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              'Keranjang Belanja',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 18,
+              ),
+            ),
+
+            centerTitle: true,
+            backgroundColor: primaryColor,
+            automaticallyImplyLeading: false,
+            // Tombol kembali (leading) dihilangkan
+            // leading: IconButton(
+            //   icon: const Icon(Icons.arrow_back, color: Colors.white),
+            //   onPressed: () {
+            //     Navigator.pop(
+            //       context,
+            //     ); // Kembali ke layar sebelumnya (HomeScreen)
+            //   },
+            // ),
+          ),
+          body:
+              cart.items.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shopping_cart_outlined,
+                          size: 100,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Keranjang Anda kosong.',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: cart.items.length,
+                    itemBuilder: (context, index) {
+                      final CartItem item = cart.items[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  image: DecorationImage(
+                                    image: NetworkImage(item.product.gambarUrl),
+                                    fit: BoxFit.cover,
+                                    onError: (exception, stackTrace) {
+                                      // Fallback if image fails to load
+                                      return; // Silently fail or show placeholder
+                                    },
+                                  ),
+                                ),
+                                child:
+                                    item.product.gambarUrl ==
+                                            'https://placehold.co/150x150?text=No+Image'
+                                        ? const Icon(
+                                          Icons.broken_image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        )
+                                        : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.product.nama,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Harga: Rp ${item.product.harga.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        color: primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                          ),
+                                          color: primaryColor,
+                                          onPressed: () {
+                                            cart.decreaseQuantity(
+                                              item.product.id,
+                                            );
+                                          },
+                                        ),
+                                        Text(
+                                          '${item.quantity}',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                          ),
+                                          color: primaryColor,
+                                          onPressed: () {
+                                            cart.increaseQuantity(
+                                              item.product.id,
+                                            );
+                                          },
+                                        ),
+                                        const Spacer(),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () {
+                                            cart.removeItem(item.product.id);
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '${item.product.nama} dihapus dari keranjang.',
+                                                ),
+                                                duration: const Duration(
+                                                  seconds: 1,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          bottomNavigationBar: BottomAppBar(
+            elevation: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              height: 80, // Tinggi BottomAppBar
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Total:',
+                        style: TextStyle(fontSize: 20, color: Colors.grey),
+                      ),
+                      Text(
+                        '  Rp ${cart.totalPrice.toStringAsFixed(0)}', // Tampilkan total harga
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed:
+                        () => _handleCheckout(
+                          context,
+                        ), // Panggil fungsi _handleCheckout
+                    icon: const Icon(Icons.payment, color: Colors.white),
+                    label: const Text(
+                      'Beli',
+                      style: TextStyle(fontSize: 15, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
