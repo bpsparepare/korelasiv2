@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'add_product_screen.dart';
 import 'manage_stock_screen.dart';
 import 'edit_delete_product_screen.dart';
-import 'recap_users_screen.dart'; // BARU: Import halaman rekap
+import 'recap_users_screen.dart';
+import 'manage_users_screen.dart'; // BARU: Import halaman kelola pengguna
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -53,7 +54,6 @@ class AdminScreen extends StatelessWidget {
             },
           ),
         ),
-        // --- MENU BARU DI SINI ---
         Card(
           child: ListTile(
             leading: const Icon(Icons.receipt_long),
@@ -67,8 +67,23 @@ class AdminScreen extends StatelessWidget {
             },
           ),
         ),
+        // --- MENU BARU DI SINI ---
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.manage_accounts),
+            title: const Text('Kelola Akun Pengguna'),
+            subtitle: const Text('Melihat detail dan password akun.'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ManageUsersScreen()),
+              );
+            },
+          ),
+        ),
         // --- AKHIR MENU BARU ---
       ],
     );
   }
 }
+

@@ -1,7 +1,7 @@
 // lib/screens/edit_profile_screen.dart
 
 import 'package:flutter/material.dart';
-import '/models/user.dart' as app_user;
+import '../models/user.dart' as app_user;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -56,6 +56,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         id: widget.user.id,
         namaLengkap: newNama,
         username: newUsername,
+        password: widget.user.password, // <-- PERBAIKAN DI SINI
         role: widget.user.role,
       );
 
@@ -134,3 +135,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
+
