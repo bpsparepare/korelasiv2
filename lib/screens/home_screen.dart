@@ -241,6 +241,21 @@ class _HomePageContentState extends State<HomePageContent> {
     });
   }
 
+  // --- FUNGSI BARU UNTUK MEMBUAT GRID RESPONSIVE ---
+  int _getCrossAxisCount(double screenWidth) {
+    if (screenWidth > 1200) return 5; // Layar sangat besar
+    if (screenWidth > 900) return 4;  // Layar besar / tablet landscape
+    if (screenWidth > 600) return 3;  // Layar kecil / tablet portrait
+    return 2; // Layar HP
+  }
+
+  double _getChildAspectRatio(double screenWidth) {
+    if (screenWidth > 600) return 0.75; // Aspek rasio untuk desktop
+    return 2 / 3.5; // Aspek rasio untuk mobile
+  }
+  // --- AKHIR FUNGSI BARU ---
+
+
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = const Color.fromARGB(255, 255, 158, 68);
@@ -252,38 +267,34 @@ class _HomePageContentState extends State<HomePageContent> {
       return Center(child: Text(_errorMessage));
     }
 
-    // --- PERBAIKAN RESPONSIVITAS DI SINI ---
-    // Dapatkan lebar layar untuk kalkulasi
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Tentukan lebar kartu berdasarkan lebar layar
-    final double cardWidth = (screenWidth - 16 * 3) / 2; // (Lebar Layar - Padding Kiri & Kanan & Tengah) / 2
-    // Tentukan tinggi kartu yang diinginkan
-    final double cardHeight = 300;
-    // Hitung aspek rasio secara dinamis
-    final double aspectRatio = cardWidth / cardHeight;
-
     return Column(
       children: [
         _buildSearchAndFilter(primaryColor),
-        // --- PERBAIKAN DI SINI ---
-        const SizedBox(height: 16), // Menambahkan jarak vertikal
-        // --- AKHIR PERBAIKAN ---
+        const SizedBox(height: 16),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _fetchData,
-            child: GridView.builder(
-              // DIUBAH: Padding atas dihapus dari sini
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 2 / 3.5,
-              ),
-              itemCount: _filteredProducts.length,
-              itemBuilder: (context, index) {
-                final product = _filteredProducts[index];
-                return _buildProductCard(product);
+            // --- PERBAIKAN: Menggunakan LayoutBuilder untuk mendapatkan lebar layar ---
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Kalkulasi dinamis berdasarkan lebar yang tersedia
+                final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
+                final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
+
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount, // Gunakan hasil kalkulasi
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: childAspectRatio, // Gunakan hasil kalkulasi
+                  ),
+                  itemCount: _filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = _filteredProducts[index];
+                    return _buildProductCard(product);
+                  },
+                );
               },
             ),
           ),
@@ -291,7 +302,6 @@ class _HomePageContentState extends State<HomePageContent> {
       ],
     );
   }
-  // --- AKHIR PERBAIKAN ---
 
   Widget _buildSearchAndFilter(Color primaryColor) {
     return Padding(
@@ -389,7 +399,7 @@ class _HomePageContentState extends State<HomePageContent> {
                         color: primaryColor,
                       ),
                     ),
-                    const SizedBox(height: 8), // Beri jarak sebelum tombol
+                    const SizedBox(height: 8),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
                       transitionBuilder: (Widget child, Animation<double> animation) {
@@ -455,3 +465,4 @@ class _HomePageContentState extends State<HomePageContent> {
     );
   }
 }
+

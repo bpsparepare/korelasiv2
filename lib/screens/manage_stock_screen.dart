@@ -118,14 +118,12 @@ class _ManageStockScreenState extends State<ManageStockScreen> {
 
     if (newStock != null) {
       try {
-        // Ambil ID admin yang sedang login
         final prefs = await SharedPreferences.getInstance();
         final adminId = prefs.getString('userId');
         if (adminId == null) {
           throw Exception('Sesi admin tidak ditemukan.');
         }
 
-        // Panggil fungsi RPC 'admin_update_stock'
         await supabase.rpc('admin_update_stock', params: {
           'p_user_id': adminId,
           'p_product_id': product.id,
@@ -148,6 +146,20 @@ class _ManageStockScreenState extends State<ManageStockScreen> {
     }
   }
 
+  // --- FUNGSI BARU UNTUK MEMBUAT GRID RESPONSIVE ---
+  int _getCrossAxisCount(double screenWidth) {
+    if (screenWidth > 1200) return 5;
+    if (screenWidth > 900) return 4;
+    if (screenWidth > 600) return 3;
+    return 2;
+  }
+
+  double _getChildAspectRatio(double screenWidth) {
+    if (screenWidth > 600) return 0.8; // Aspek rasio untuk desktop
+    return 2 / 3.2; // Aspek rasio untuk mobile
+  }
+  // --- AKHIR FUNGSI BARU ---
+
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = const Color.fromARGB(255, 255, 158, 68);
@@ -169,19 +181,27 @@ class _ManageStockScreenState extends State<ManageStockScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _fetchAllProducts,
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 2 / 3.2,
-                ),
-                itemCount: _filteredProducts.length,
-                itemBuilder: (context, index) {
-                  final product = _filteredProducts[index];
-                  return _buildProductStockCard(product);
-                },
+              // --- PERBAIKAN: Menggunakan LayoutBuilder untuk mendapatkan lebar layar ---
+              child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
+                    final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount, // Gunakan hasil kalkulasi
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: childAspectRatio, // Gunakan hasil kalkulasi
+                      ),
+                      itemCount: _filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = _filteredProducts[index];
+                        return _buildProductStockCard(product);
+                      },
+                    );
+                  }
               ),
             ),
           ),
@@ -301,3 +321,4 @@ class _ManageStockScreenState extends State<ManageStockScreen> {
     );
   }
 }
+

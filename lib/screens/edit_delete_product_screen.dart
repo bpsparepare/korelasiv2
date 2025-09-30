@@ -99,10 +99,13 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
     );
 
     if (confirm == true) {
+      setState(() { _isLoading = true; });
       try {
         final bucketName = 'gambar-produk';
-        final fileName = Uri.parse(product.gambarUrl).pathSegments.last;
-        await supabase.storage.from(bucketName).remove([fileName]);
+        if (product.gambarUrl.isNotEmpty) {
+          final fileName = Uri.parse(product.gambarUrl).pathSegments.last;
+          await supabase.storage.from(bucketName).remove([fileName]);
+        }
 
         await supabase.from('korelasi_master_produk').delete().eq('id_produk', product.id);
 
@@ -111,13 +114,14 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
             const SnackBar(content: Text('Produk berhasil dihapus!'), backgroundColor: Colors.green),
           );
         }
-        _fetchAllProducts();
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Gagal menghapus produk: $e'), backgroundColor: Colors.red),
           );
         }
+      } finally {
+        _fetchAllProducts();
       }
     }
   }
@@ -131,6 +135,20 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
       _fetchAllProducts();
     }
   }
+
+  // --- FUNGSI BARU UNTUK MEMBUAT GRID RESPONSIVE ---
+  int _getCrossAxisCount(double screenWidth) {
+    if (screenWidth > 1200) return 5;
+    if (screenWidth > 900) return 4;
+    if (screenWidth > 600) return 3;
+    return 2;
+  }
+
+  double _getChildAspectRatio(double screenWidth) {
+    if (screenWidth > 600) return 0.8; // Aspek rasio untuk desktop
+    return 2 / 3.5; // Aspek rasio untuk mobile
+  }
+  // --- AKHIR FUNGSI BARU ---
 
   @override
   Widget build(BuildContext context) {
@@ -153,19 +171,27 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _fetchAllProducts,
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 2 / 3.5,
-                ),
-                itemCount: _filteredProducts.length,
-                itemBuilder: (context, index) {
-                  final product = _filteredProducts[index];
-                  return _buildProductEditCard(product);
-                },
+              // --- PERBAIKAN: Menggunakan LayoutBuilder untuk mendapatkan lebar layar ---
+              child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
+                    final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount, // Gunakan hasil kalkulasi
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: childAspectRatio, // Gunakan hasil kalkulasi
+                      ),
+                      itemCount: _filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = _filteredProducts[index];
+                        return _buildProductEditCard(product);
+                      },
+                    );
+                  }
               ),
             ),
           ),
@@ -261,7 +287,6 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
               ],
             ),
           ),
-          // --- PERBAIKAN DI SINI ---
           Row(
             children: [
               Expanded(
@@ -271,16 +296,15 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12)),
                     ),
-                    // Mengurangi padding internal tombol
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: () => _navigateToEdit(product),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.edit, size: 13), // Ukuran ikon lebih kecil
+                      Icon(Icons.edit, size: 13),
                       SizedBox(width: 4),
-                      Text('Edit', style: TextStyle(fontSize: 12)), // Ukuran teks lebih kecil
+                      Text('Edit', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
@@ -292,25 +316,24 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.only(bottomRight: Radius.circular(12)),
                     ),
-                    // Mengurangi padding internal tombol
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: () => _deleteProduct(product),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.delete, size: 13), // Ukuran ikon lebih kecil
+                      Icon(Icons.delete, size: 13),
                       SizedBox(width: 4),
-                      Text('Hapus', style: TextStyle(fontSize: 12)), // Ukuran teks lebih kecil
+                      Text('Hapus', style: TextStyle(fontSize: 12)),
                     ],
                   ),
                 ),
               ),
             ],
           )
-          // --- AKHIR PERBAIKAN ---
         ],
       ),
     );
   }
 }
+
