@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'providers/cart_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart'; // <-- Ganti ke sini
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 // BARU: Import untuk inisialisasi tanggal
@@ -47,8 +48,8 @@ class MyApp extends StatelessWidget {
           fontFamily: 'Inter',
           scaffoldBackgroundColor: Colors.white,
         ),
-        // Aplikasi akan selalu dimulai dari halaman login
-        home: const LoginScreen(),
+        // Aplikasi akan selalu dimulai dari Splash Screen untuk memeriksa sesi login
+        home: const SplashScreen(), // <-- Ganti ke sini
       ),
     );
   }

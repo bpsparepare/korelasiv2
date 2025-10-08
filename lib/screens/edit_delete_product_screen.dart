@@ -171,27 +171,45 @@ class _EditDeleteProductScreenState extends State<EditDeleteProductScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _fetchAllProducts,
-              // --- PERBAIKAN: Menggunakan LayoutBuilder untuk mendapatkan lebar layar ---
-              child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
-                    final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
-
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount, // Gunakan hasil kalkulasi
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: childAspectRatio, // Gunakan hasil kalkulasi
+              child: _filteredProducts.isEmpty
+                  ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 100),
+                  Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      'Produk tidak ditemukan',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
-                      itemCount: _filteredProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = _filteredProducts[index];
-                        return _buildProductEditCard(product);
-                      },
-                    );
-                  }
+                    ),
+                  ),
+                ],
+              )
+                  : LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
+                  final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
+
+                  return GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: childAspectRatio,
+                    ),
+                    itemCount: _filteredProducts.length,
+                    itemBuilder: (context, index) {
+                      final product = _filteredProducts[index];
+                      return _buildProductEditCard(product);
+                    },
+                  );
+                },
               ),
             ),
           ),

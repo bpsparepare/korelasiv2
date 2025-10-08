@@ -274,20 +274,37 @@ class _HomePageContentState extends State<HomePageContent> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: _fetchData,
-            // --- PERBAIKAN: Menggunakan LayoutBuilder untuk mendapatkan lebar layar ---
-            child: LayoutBuilder(
+            child: _filteredProducts.isEmpty
+                ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                const SizedBox(height: 100),
+                Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    'Produk tidak ditemukan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            )
+                : LayoutBuilder(
               builder: (context, constraints) {
-                // Kalkulasi dinamis berdasarkan lebar yang tersedia
                 final crossAxisCount = _getCrossAxisCount(constraints.maxWidth);
                 final childAspectRatio = _getChildAspectRatio(constraints.maxWidth);
 
                 return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount, // Gunakan hasil kalkulasi
+                    crossAxisCount: crossAxisCount,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: childAspectRatio, // Gunakan hasil kalkulasi
+                    childAspectRatio: childAspectRatio,
                   ),
                   itemCount: _filteredProducts.length,
                   itemBuilder: (context, index) {
