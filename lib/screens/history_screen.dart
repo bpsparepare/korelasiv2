@@ -16,7 +16,8 @@ class HistoryScreen extends StatefulWidget {
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveClientMixin {
+class _HistoryScreenState extends State<HistoryScreen>
+    with AutomaticKeepAliveClientMixin {
   // State utama
   List<OrderHistory> _allOrderHistory = [];
   bool _isLoading = true;
@@ -75,37 +76,47 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
       final Set<DateTime> uniqueMonths = {};
 
       groupedItems.forEach((orderId, items) {
-        final rawDateString = (response as List).firstWhere((e) => e['id_pesanan'] == orderId)['tanggal_pesanan'];
+        final rawDateString =
+            (response as List).firstWhere(
+              (e) => e['id_pesanan'] == orderId,
+            )['tanggal_pesanan'];
         final orderDateTime = DateTime.parse(rawDateString);
 
         // Tambahkan bulan unik untuk filter
         uniqueMonths.add(DateTime(orderDateTime.year, orderDateTime.month));
 
-        final formattedDate = DateFormat('dd MMMM yyyy, HH:mm', 'id_ID').format(orderDateTime);
+        final formattedDate = DateFormat(
+          'dd MMMM yyyy, HH:mm',
+          'id_ID',
+        ).format(orderDateTime);
         final double total = items.fold(0, (sum, item) => sum + item.subtotal);
 
-        fetchedHistory.add(OrderHistory(
-          orderId: orderId,
-          orderDate: formattedDate,
-          totalOrderPrice: total,
-          items: items,
-        ));
+        fetchedHistory.add(
+          OrderHistory(
+            orderId: orderId,
+            orderDate: formattedDate,
+            totalOrderPrice: total,
+            items: items,
+          ),
+        );
       });
 
       if (!mounted) return;
 
       setState(() {
         _allOrderHistory = fetchedHistory;
-        _availableMonths = uniqueMonths.toList()..sort((a, b) => b.compareTo(a)); // Urutkan dari terbaru
+        _availableMonths =
+            uniqueMonths.toList()
+              ..sort((a, b) => b.compareTo(a)); // Urutkan dari terbaru
         if (_availableMonths.isNotEmpty) {
-          _selectedMonth = _availableMonths.first; // Pilih bulan terbaru sebagai default
+          _selectedMonth =
+              _availableMonths.first; // Pilih bulan terbaru sebagai default
           _filterOrdersByMonth(); // Terapkan filter awal
         } else {
           _errorMessage = 'Belum ada riwayat pembelian.';
         }
         _isLoading = false;
       });
-
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -118,13 +129,21 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
   void _filterOrdersByMonth() {
     if (_selectedMonth == null) return;
 
-    final filtered = _allOrderHistory.where((order) {
-      // Kita perlu mem-parsing kembali tanggal yang sudah diformat untuk perbandingan
-      final orderDateTime = DateFormat('dd MMMM yyyy, HH:mm', 'id_ID').parse(order.orderDate);
-      return orderDateTime.year == _selectedMonth!.year && orderDateTime.month == _selectedMonth!.month;
-    }).toList();
+    final filtered =
+        _allOrderHistory.where((order) {
+          // Kita perlu mem-parsing kembali tanggal yang sudah diformat untuk perbandingan
+          final orderDateTime = DateFormat(
+            'dd MMMM yyyy, HH:mm',
+            'id_ID',
+          ).parse(order.orderDate);
+          return orderDateTime.year == _selectedMonth!.year &&
+              orderDateTime.month == _selectedMonth!.month;
+        }).toList();
 
-    final total = filtered.fold<double>(0, (sum, order) => sum + order.totalOrderPrice);
+    final total = filtered.fold<double>(
+      0,
+      (sum, order) => sum + order.totalOrderPrice,
+    );
 
     setState(() {
       _filteredHistory = filtered;
@@ -163,16 +182,22 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
               DropdownButtonFormField<DateTime>(
                 value: _selectedMonth,
                 decoration: const InputDecoration(
-                  labelText: 'Filter Berdasarkan Bulan',
+                  labelText: 'Filter Berdasarkan Bulan e',
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
-                items: _availableMonths.map((month) {
-                  return DropdownMenuItem(
-                    value: month,
-                    child: Text(DateFormat('MMMM yyyy', 'id_ID').format(month)),
-                  );
-                }).toList(),
+                items:
+                    _availableMonths.map((month) {
+                      return DropdownMenuItem(
+                        value: month,
+                        child: Text(
+                          DateFormat('MMMM yyyy', 'id_ID').format(month),
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -214,7 +239,9 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -222,7 +249,10 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                       children: [
                         Text(
                           'Tanggal: ${order.orderDate}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -234,7 +264,13 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                           ),
                         ),
                         const Divider(height: 20),
-                        const Text('Detail Item:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        const Text(
+                          'Detail Item:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         ...order.items.map((item) {
                           return Padding(
@@ -248,26 +284,42 @@ class _HistoryScreenState extends State<HistoryScreen> with AutomaticKeepAliveCl
                                     width: 50,
                                     height: 50,
                                     fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(color: Colors.grey[200]),
-                                    errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.grey),
+                                    placeholder:
+                                        (context, url) =>
+                                            Container(color: Colors.grey[200]),
+                                    errorWidget:
+                                        (context, url, error) => const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${item.productName} (${item.jumlah} ${item.satuan})',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                       Text(
                                         'Harga: Rp ${currencyFormatter.format(item.harga)}',
-                                        style: const TextStyle(fontSize: 11, color: Colors.black54),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                       Text(
                                         'Subtotal: Rp ${currencyFormatter.format(item.subtotal)}',
-                                        style: const TextStyle(fontSize: 11, color: Colors.black87),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.black87,
+                                        ),
                                       ),
                                     ],
                                   ),

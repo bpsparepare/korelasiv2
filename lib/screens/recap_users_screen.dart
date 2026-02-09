@@ -4,8 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:excel/excel.dart';
 import 'package:universal_html/html.dart' as html;
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import 'user_history_detail_screen.dart';
+import '../utils/month_utils.dart';
 
 class UserRecap {
   final String id;
@@ -55,24 +59,8 @@ class _RecapUsersScreenState extends State<RecapUsersScreen> {
   Future<void> _fetchAvailableMonthsAndInitialData() async {
     setState(() => _isLoading = true);
     try {
-      final response = await supabase
-          .from('mv_korelasi_available_months')
-          .select('month_start')
-          .order('month_start', ascending: false)
-          .range(0, 99999);
-      final uniqueMonths = <String>{};
-
-      for (var item in (response as List)) {
-        final date = DateTime.parse(item['month_start']);
-        uniqueMonths.add(DateFormat('MMMM yyyy', 'id_ID').format(date));
-      }
-
-      _availableMonths =
-          uniqueMonths.toList()..sort((a, b) {
-            final da = DateFormat('MMMM yyyy', 'id_ID').parse(a);
-            final db = DateFormat('MMMM yyyy', 'id_ID').parse(b);
-            return db.compareTo(da);
-          });
+      final monthDates = await MonthUtils.fetchMonthRange(supabase);
+      _availableMonths = MonthUtils.formatMonthsId(monthDates);
 
       // ✅ Pilih bulan sekarang secara default jika tersedia
       final currentMonth = DateFormat(
@@ -232,23 +220,39 @@ class _RecapUsersScreenState extends State<RecapUsersScreen> {
           .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: totalRow))
           .value = DoubleCellValue(totalKeseluruhan);
 
-      // File name
       final monthName = (_selectedMonth ?? 'Semua_Waktu').replaceAll(' ', '_');
       final fileName = 'Rekap_Belanja_Korelasi_$monthName.xlsx';
 
       final fileBytes = excel.encode();
 
-      // Unduh hanya di web
-      if (kIsWeb && fileBytes != null) {
-        final blob = html.Blob([
-          fileBytes,
-        ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor =
-            html.AnchorElement(href: url)
-              ..setAttribute('download', fileName)
-              ..click();
-        html.Url.revokeObjectUrl(url);
+      if (fileBytes != null) {
+        if (kIsWeb) {
+          final blob = html.Blob(
+            [fileBytes],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          );
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          final anchor =
+              html.AnchorElement(href: url)
+                ..setAttribute('download', fileName)
+                ..click();
+          html.Url.revokeObjectUrl(url);
+        } else {
+          final downloadsDir = await getDownloadsDirectory();
+          final targetDir =
+              downloadsDir ?? await getApplicationDocumentsDirectory();
+          final savePath = '${targetDir.path}\\$fileName';
+          final outFile = File(savePath);
+          await outFile.writeAsBytes(
+            Uint8List.fromList(fileBytes),
+            flush: true,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Disimpan: $savePath')));
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -336,19 +340,16 @@ class _RecapUsersScreenState extends State<RecapUsersScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            if (kIsWeb)
-                              _isExporting
-                                  ? const CircularProgressIndicator()
-                                  : IconButton.filled(
-                                    icon: const Icon(
-                                      Icons.download_for_offline,
-                                    ),
-                                    tooltip: 'Ekspor rekap bulan ini (XLSX)',
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                    ),
-                                    onPressed: _exportCurrentRecapToXlsx,
+                            _isExporting
+                                ? const CircularProgressIndicator()
+                                : IconButton.filled(
+                                  icon: const Icon(Icons.download_for_offline),
+                                  tooltip: 'Ekspor rekap bulan ini (XLSX)',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: primaryColor,
                                   ),
+                                  onPressed: _exportCurrentRecapToXlsx,
+                                ),
                           ],
                         ),
                       ],
