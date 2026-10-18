@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user.dart' as app_user;
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
+import 'pembaruan_aplikasi.dart';
 
 /// Alamat balik login Google di Android, Windows, iOS, dan macOS. Harus
 /// terdaftar di Dashboard Supabase › Authentication › URL Configuration ›
@@ -79,6 +80,23 @@ class SesiKorelasi {
     }
   }
 
+  /// Lanjut ke Beranda atau Login sesudah layar wajib perbarui dilepas.
+  static void lanjutkan() {
+    if (_langganan == null) {
+      mulai();
+    } else if (_pengguna != null) {
+      _keBeranda();
+    } else {
+      final sesi = _klien.auth.currentSession;
+      if (sesi == null) {
+        _keLogin();
+      } else {
+        _uidDimuat = null;
+        _masuk(sesi.user);
+      }
+    }
+  }
+
   static void _tanganiPerubahan(AuthState data) {
     switch (data.event) {
       case AuthChangeEvent.signedIn:
@@ -129,7 +147,9 @@ class SesiKorelasi {
   /// Keluar dari akun Bolt; layar pindah ke Login lewat `signedOut`.
   static Future<void> keluar() => _klien.auth.signOut();
 
+  // Selama layar wajib perbarui tampil, perubahan login tidak memindahkan layar.
   static void _keLogin() {
+    if (PembaruanAplikasi.sedangWajib) return;
     navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
@@ -137,6 +157,7 @@ class SesiKorelasi {
   }
 
   static void _keBeranda() {
+    if (PembaruanAplikasi.sedangWajib) return;
     navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => HomeScreen(user: pengguna)),
       (_) => false,

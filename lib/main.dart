@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'providers/cart_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/pembaruan_aplikasi.dart';
 import 'services/sesi_korelasi.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +23,9 @@ Future<void> main() async {
     url: 'https://iubeqsafpibmousxvmfk.supabase.co',
     anonKey: 'sb_publishable_4uQyI4wGRTCwXJWMAJD8Rg_fMVc8Dcj',
   );
+
+  // Cek versi lagi setiap kali aplikasi kembali dibuka (lihat splash juga)
+  PembaruanAplikasi.pantau();
 
   runApp(const MyApp());
 }

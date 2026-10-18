@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/pembaruan_aplikasi.dart';
 import '../services/sesi_korelasi.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -16,9 +17,22 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLoginStatus() async {
-    // Beri jeda singkat agar splash screen terlihat
-    await Future.delayed(const Duration(seconds: 1));
+    // Beri jeda singkat agar splash screen terlihat, sekaligus cek versi
+    final hasil = await Future.wait([
+      PembaruanAplikasi.periksa(),
+      Future.delayed(const Duration(seconds: 1)),
+    ]);
     if (!mounted) return;
+
+    final info = hasil.first as InfoPembaruan?;
+    if (info != null && info.wajib) {
+      PembaruanAplikasi.bukaLayarWajib(info);
+      return;
+    }
+    if (info != null) {
+      await PembaruanAplikasi.tawarkan(context, info);
+      if (!mounted) return;
+    }
 
     // Sesi dari Supabase.auth (akun Bolt); SesiKorelasi memindahkan layar ke
     // Login atau Beranda.
