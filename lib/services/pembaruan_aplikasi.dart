@@ -72,7 +72,8 @@ class PembaruanAplikasi with WidgetsBindingObserver {
     _terakhirDiperiksa = DateTime.now();
     try {
       final paket = await PackageInfo.fromPlatform();
-      final buildTerpasang = _nomorBuild(paket);
+      final buildTerpasang = nomorBuild(
+          paket.buildNumber, paket.version, defaultTargetPlatform);
       if (buildTerpasang == null) return null;
 
       final List<dynamic> baris = await Supabase.instance.client
@@ -98,11 +99,23 @@ class PembaruanAplikasi with WidgetsBindingObserver {
     }
   }
 
-  static int? _nomorBuild(PackageInfo paket) {
-    final langsung = int.tryParse(paket.buildNumber);
-    if (langsung != null) return langsung;
-    final bagian = paket.version.split('+');
-    return bagian.length == 2 ? int.tryParse(bagian[1]) : null;
+  /// Nomor build (angka sesudah `+` di pubspec) dari versi terpasang.
+  ///
+  /// APK `--split-per-abi` memakai versionCode `kodeAbi * 1000 + build`
+  /// (arm64-v8a 2.2.0+4 → 2004, armeabi-v7a → 1004), jadi di Android
+  /// diambil sisa bagi 1000. Nomor build harus tetap di bawah 1000.
+  @visibleForTesting
+  static int? nomorBuild(
+      String buildNumber, String version, TargetPlatform platform) {
+    var build = int.tryParse(buildNumber);
+    if (build == null) {
+      final bagian = version.split('+');
+      build = bagian.length == 2 ? int.tryParse(bagian[1]) : null;
+    }
+    if (build != null && platform == TargetPlatform.android) {
+      build = build % 1000;
+    }
+    return build;
   }
 
   /// Tautan unduh untuk [platform]; kolom kosong jatuh ke `download_url`.

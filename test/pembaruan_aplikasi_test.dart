@@ -25,4 +25,16 @@ void main() {
   test('tanpa tautan sama sekali → null', () {
     expect(PembaruanAplikasi.pilihTautan({}, TargetPlatform.android), isNull);
   });
+
+  test('APK split-per-abi: versionCode 2004/1004 dibaca build 4', () {
+    expect(PembaruanAplikasi.nomorBuild('2004', '2.2.0', TargetPlatform.android), 4);
+    expect(PembaruanAplikasi.nomorBuild('1004', '2.2.0', TargetPlatform.android), 4);
+    expect(PembaruanAplikasi.nomorBuild('4', '2.2.0', TargetPlatform.android), 4);
+  });
+
+  test('desktop memakai nomor build apa adanya, atau dari versi', () {
+    expect(PembaruanAplikasi.nomorBuild('4', '2.2.0', TargetPlatform.macOS), 4);
+    expect(PembaruanAplikasi.nomorBuild('', '2.2.0+4', TargetPlatform.windows), 4);
+    expect(PembaruanAplikasi.nomorBuild('', '2.2.0', TargetPlatform.windows), isNull);
+  });
 }
