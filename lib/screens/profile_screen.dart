@@ -3,8 +3,7 @@
 import 'package:flutter/material.dart';
 import '/models/user.dart' as app_user;
 import '/screens/edit_profile_screen.dart';
-import '/screens/login_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '/services/sesi_korelasi.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -24,14 +23,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     currentUser = widget.user;
   }
 
+  // Keluar dari akun Bolt; SesiKorelasi memindahkan layar ke Login.
   Future<void> _logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
+    try {
+      await SesiKorelasi.keluar();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal keluar: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -49,12 +48,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Sandi yang diubah adalah sandi akun Bolt (Supabase Auth), berlaku juga
+  // untuk login di aplikasi Bolt.
   void _showChangePasswordDialog() {
+    if (!SesiKorelasi.punyaSandi) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Akun ini masuk lewat Google dan belum punya sandi. '
+              'Buat sandi lewat aplikasi Bolt (Pengaturan).'),
+        ),
+      );
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final oldPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
     final supabase = Supabase.instance.client;
+    final messenger = ScaffoldMessenger.of(context);
     bool isSaving = false;
 
     showDialog(
@@ -102,36 +114,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (formKey.currentState!.validate()) {
                       setDialogState(() => isSaving = true);
                       try {
-                        final response = await supabase
-                            .from('korelasi_login')
-                            .select('password')
-                            .eq('id', currentUser.id)
-                            .single();
-
-                        final currentPassword = response['password'];
-
-                        if (currentPassword != oldPasswordController.text) {
+                        final sandiLamaBenar = await SesiKorelasi
+                            .verifikasiSandi(oldPasswordController.text);
+                        if (!sandiLamaBenar) {
                           throw Exception('Password lama salah!');
                         }
 
-                        await supabase
-                            .from('korelasi_login')
-                            .update({'password': newPasswordController.text})
-                            .eq('id', currentUser.id);
+                        await supabase.auth.updateUser(
+                          UserAttributes(password: newPasswordController.text),
+                        );
 
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Password berhasil diubah!'), backgroundColor: Colors.green),
                         );
 
+                      } on AuthException catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Gagal: ${e.message}'), backgroundColor: Colors.red),
+                        );
                       } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(content: Text('Gagal: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
                         );
                       } finally {
-                        setDialogState(() => isSaving = false);
+                        if (context.mounted) setDialogState(() => isSaving = false);
                       }
                     }
                   },

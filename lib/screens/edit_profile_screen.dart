@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/user.dart' as app_user;
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/sesi_korelasi.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -46,19 +46,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       })
           .eq('id', widget.user.id);
 
-      // Perbarui data di SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('namaLengkap', newNama);
-      await prefs.setString('username', newUsername);
-
-      // Buat objek user baru untuk dikirim kembali
-      final updatedUser = app_user.User(
-        id: widget.user.id,
+      // Perbarui data sesi (dipakai keranjang sebagai nama_pembeli)
+      final updatedUser = widget.user.copyWith(
         namaLengkap: newNama,
         username: newUsername,
-        password: widget.user.password, // <-- PERBAIKAN DI SINI
-        role: widget.user.role,
       );
+      SesiKorelasi.perbarui(updatedUser);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/sesi_korelasi.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -50,12 +50,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-
-      if (userId == null) {
-        throw Exception('ID Pelanggan tidak ditemukan. Silakan login kembali.');
-      }
+      final userId = SesiKorelasi.pengguna.id;
 
       final response = await supabase
           .from('korelasi_data_pesanan')

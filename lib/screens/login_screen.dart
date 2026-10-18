@@ -1,12 +1,11 @@
 // lib/screens/login_screen.dart
 
 import 'package:flutter/material.dart';
-import '../models/user.dart' as app_user;
-import 'home_screen.dart';
-import 'register_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/sesi_korelasi.dart';
 
+/// Login dengan akun Bolt: email + sandi, atau Google. Sesudah berhasil,
+/// [SesiKorelasi] mencari baris korelasi_login lalu membuka Beranda.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,10 +14,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _showSnackbar(String message, {bool isError = false}) {
     if (!mounted) return;
@@ -31,57 +37,56 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackbar('Email dan sandi tidak boleh kosong.', isError: true);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    final String username = _usernameController.text.trim();
-    final String password = _passwordController.text.trim();
-
-    if (username.isEmpty || password.isEmpty) {
-      _showSnackbar('Username dan password tidak boleh kosong.', isError: true);
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
     try {
-      final supabase = Supabase.instance.client;
-      // Query manual ke tabel korelasi_login
-      final response = await supabase
-          .from('korelasi_login')
-          .select()
-          .eq('username', username)
-          .eq('password', password)
-          .single(); // Ambil satu baris
-
-      debugPrint('Login Berhasil, Data dari Supabase: $response');
-
-      // Buat objek User dari model Anda sendiri
-      final user = app_user.User.fromJson(response);
-
-      // Simpan sesi login ke SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userId', user.id);
-      await prefs.setString('username', user.username);
-      await prefs.setString('namaLengkap', user.namaLengkap);
-      // PERUBAHAN: Simpan peran pengguna
-      await prefs.setString('userRole', user.role);
-
-      if (!mounted) return;
-      _showSnackbar('Login berhasil!');
-
-      // Navigasi ke HomeScreen dan kirim objek user buatan Anda
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
+      // Layar pindah ke Beranda lewat SesiKorelasi (event signedIn).
+      await Supabase.instance.client.auth
+          .signInWithPassword(email: email, password: password);
+    } on AuthException catch (error) {
+      debugPrint('Login Gagal: ${error.message}');
+      _showSnackbar(
+        error.code == 'invalid_credentials'
+            ? 'Email atau sandi salah.'
+            : 'Login gagal: ${error.message}',
+        isError: true,
       );
-
     } catch (error) {
       debugPrint('Login Gagal: $error');
-      _showSnackbar('Username atau password salah.', isError: true);
+      _showSnackbar('Login gagal. Periksa koneksi lalu coba lagi.', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loginGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      // Membuka browser; aplikasi kembali lewat alamatBalikLogin dan
+      // supabase_flutter menukar kodenya menjadi sesi (event signedIn).
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: alamatBalikPlatform,
+      );
+    } catch (error) {
+      debugPrint('Login Google Gagal: $error');
+      _showSnackbar('Gagal membuka login Google.', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -119,22 +124,30 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 200,
               ),
               const SizedBox(height: 30),
+              const Text(
+                'Masuk dengan akun Bolt',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
               TextField(
-                controller: _usernameController,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
                 decoration: InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Email',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  prefixIcon: const Icon(Icons.person),
+                  prefixIcon: const Icon(Icons.email),
                 ),
               ),
               const SizedBox(height: 15),
               TextField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
+                onSubmitted: (_) => _login(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: 'Sandi',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.0),
                   ),
@@ -178,20 +191,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: const Text('Masuk'),
               ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RegisterScreen(),
+              const SizedBox(height: 15),
+              if (!_isLoading)
+                OutlinedButton.icon(
+                  onPressed: _loginGoogle,
+                  icon: const Icon(Icons.g_mobiledata, size: 32),
+                  label: const Text('Masuk dengan Google'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color.fromARGB(255, 255, 158, 68),
+                    side: const BorderSide(
+                      color: Color.fromARGB(255, 255, 158, 68),
                     ),
-                  );
-                },
-                child: const Text(
-                  'Belum punya akun? Daftar di sini',
-                  style: TextStyle(color: Color.fromARGB(255, 255, 158, 68)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 30,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
                 ),
+              const SizedBox(height: 20),
+              const Text(
+                'Belum punya akun atau lupa sandi? Akun dibuat dan sandi '
+                'diatur lewat aplikasi Bolt. Hubungi admin.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
               ),
             ],
           ),

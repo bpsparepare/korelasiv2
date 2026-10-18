@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 import '../models/user.dart' as app_user;
@@ -13,7 +12,6 @@ import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import 'history_screen.dart';
 import 'keranjang_screen.dart';
-import 'login_screen.dart';
 import 'scan_screen.dart';
 import 'admin_screen.dart';
 import 'profile_screen.dart';

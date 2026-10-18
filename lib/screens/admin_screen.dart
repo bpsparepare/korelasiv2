@@ -1,13 +1,11 @@
 // lib/screens/admin_screen.dart
 
-import 'package:flutter/foundation.dart'; // BARU: Untuk mendeteksi platform web (kIsWeb)
 import 'package:flutter/material.dart';
 import 'add_product_screen.dart';
 import 'manage_stock_screen.dart';
 import 'edit_delete_product_screen.dart';
 import 'recap_users_screen.dart';
 import 'manage_users_screen.dart';
-import 'database_manager_screen.dart'; // BARU: Import halaman database manager
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -17,24 +15,6 @@ class AdminScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        // --- MENU BARU KHUSUS WEB ---
-        if (kIsWeb)
-          Card(
-            color: Colors.orange.shade50,
-            child: ListTile(
-              leading: const Icon(Icons.table_chart),
-              title: const Text('Kelola Database (Web)'),
-              subtitle: const Text('Tampilan spreadsheet untuk mengelola semua tabel.'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DatabaseManagerScreen()),
-                );
-              },
-            ),
-          ),
-        // --- AKHIR MENU BARU ---
-
         Card(
           child: ListTile(
             leading: const Icon(Icons.add_box),
@@ -91,7 +71,7 @@ class AdminScreen extends StatelessWidget {
           child: ListTile(
             leading: const Icon(Icons.manage_accounts),
             title: const Text('Kelola Akun Pengguna'),
-            subtitle: const Text('Melihat detail dan password pengguna.'),
+            subtitle: const Text('Melihat detail pengguna.'),
             onTap: () {
               Navigator.push(
                 context,

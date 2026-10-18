@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:korelasi/screens/home_screen.dart';
-import 'package:korelasi/screens/login_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart' as app_user;
+import '../services/sesi_korelasi.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,48 +17,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkLoginStatus() async {
     // Beri jeda singkat agar splash screen terlihat
-    await Future.delayed(const Duration(seconds: 2));
-
+    await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-    if (isLoggedIn) {
-      // Jika login, ambil data user dari SharedPreferences
-      final userId = prefs.getString('userId');
-      final namaLengkap = prefs.getString('namaLengkap');
-      final username = prefs.getString('username');
-      final role = prefs.getString('userRole');
-
-      if (userId != null && namaLengkap != null && username != null && role != null) {
-        // Buat kembali objek user
-        final user = app_user.User(
-          id: userId,
-          namaLengkap: namaLengkap,
-          username: username,
-          role: role,
-          password: '', // Password tidak perlu disimpan/dibawa-bawa setelah login
-        );
-        // Arahkan ke HomeScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => HomeScreen(user: user)),
-        );
-      } else {
-        // Jika data user tidak lengkap, arahkan ke LoginScreen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    } else {
-      // Jika tidak login, arahkan ke LoginScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
+    // Sesi dari Supabase.auth (akun Bolt); SesiKorelasi memindahkan layar ke
+    // Login atau Beranda.
+    SesiKorelasi.mulai();
   }
 
   @override

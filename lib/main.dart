@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'providers/cart_provider.dart';
-import 'screens/login_screen.dart';
-import 'screens/splash_screen.dart'; // <-- Ganti ke sini
+import 'screens/splash_screen.dart';
+import 'services/sesi_korelasi.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 // BARU: Import untuk inisialisasi tanggal
@@ -41,6 +41,8 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'KORELASI',
+        navigatorKey: navigatorKey,
+        scaffoldMessengerKey: messengerKey,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           primarySwatch: Colors.orange, // Ganti warna agar lebih sesuai
@@ -48,8 +50,8 @@ class MyApp extends StatelessWidget {
           fontFamily: 'Inter',
           scaffoldBackgroundColor: Colors.white,
         ),
-        // Aplikasi akan selalu dimulai dari Splash Screen untuk memeriksa sesi login
-        home: const SplashScreen(), // <-- Ganti ke sini
+        // Splash memeriksa sesi akun Bolt lalu pindah ke Login atau Beranda
+        home: const SplashScreen(),
       ),
     );
   }
