@@ -17,10 +17,10 @@ Future<void> main() async {
   // Baris ini harus ada sebelum Supabase.initialize atau runApp
   await initializeDateFormatting('id_ID', null);
 
-  // Inisialisasi Supabase dengan URL dan Anon Key Anda
+  // Inisialisasi Supabase dengan URL dan kunci publishable (pengganti anon legacy, BOLT-32 Bolt)
   await Supabase.initialize(
     url: 'https://iubeqsafpibmousxvmfk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1YmVxc2FmcGlibW91c3h2bWZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3MTcxMTAsImV4cCI6MjA1ODI5MzExMH0.Rt4nQc-xF9uPcYnOcKhiIMdjbyB76bnsZZrPGDyPOJ4',
+    anonKey: 'sb_publishable_4uQyI4wGRTCwXJWMAJD8Rg_fMVc8Dcj',
   );
 
   runApp(const MyApp());
