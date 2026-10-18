@@ -40,7 +40,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       _errorMessage = '';
     });
     try {
-      final response = await supabase.from('korelasi_login').select().order('nama_lengkap');
+      final response = await supabase
+          .from('korelasi_login')
+          .select('id, nama_lengkap, username, role')
+          .order('nama_lengkap');
       _allUsers = (response as List).map((data) => app_user.User.fromJson(data)).toList();
       _filteredUsers = _allUsers;
     } catch (e) {

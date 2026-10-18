@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // BARU: Import untuk format angka
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/sesi_korelasi.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -78,13 +78,9 @@ class _KeranjangScreenState extends State<KeranjangScreen> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final customerId = prefs.getString('userId');
-      final customerName = prefs.getString('namaLengkap');
-
-      if (customerId == null || customerName == null) {
-        throw Exception('Informasi pelanggan tidak ditemukan.');
-      }
+      final pelanggan = SesiKorelasi.pengguna;
+      final customerId = pelanggan.id;
+      final customerName = pelanggan.namaLengkap;
 
       const uuid = Uuid();
       final orderId = uuid.v4();

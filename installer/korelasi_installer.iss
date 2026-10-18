@@ -1,7 +1,7 @@
 [Setup]
 AppId={{83A1E8F4-5C6B-4A2A-9D2A-0A61B3C48F12}}
 AppName=Korelasi
-AppVersion=1.0.0
+AppVersion=2.2.0
 AppPublisher=Korelasi
 DefaultDirName={pf}\Korelasi
 DefaultGroupName=Korelasi

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '/models/product.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/sesi_korelasi.dart';
 
 
 class ManageStockScreen extends StatefulWidget {
@@ -118,14 +118,10 @@ class _ManageStockScreenState extends State<ManageStockScreen> {
 
     if (newStock != null) {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final adminId = prefs.getString('userId');
-        if (adminId == null) {
-          throw Exception('Sesi admin tidak ditemukan.');
-        }
-
+        // id korelasi_login pengguna yang login. Sesudah migrasi 0016 server
+        // memeriksa peran lewat auth.uid(), bukan parameter ini.
         await supabase.rpc('admin_update_stock', params: {
-          'p_user_id': adminId,
+          'p_user_id': SesiKorelasi.pengguna.id,
           'p_product_id': product.id,
           'p_new_stock': newStock,
         });
